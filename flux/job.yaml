@@ -1,0 +1,53 @@
+apiVersion: jobset.x-k8s.io/v1alpha2
+kind: JobSet
+metadata:
+  name: flux
+spec:
+  network:
+    # This is the hostname
+    # <jobSet.name>-<spec.replicatedJob.name>-<job-index>-<pod-index>.<subdomain>
+    # example: flux-worker-0-0.m
+    enableDNSHostnames: true
+    # Making this as short as possible
+    subdomain: m
+    publishNotReadyAddresses: true
+  replicatedJobs:
+    # This example jobset has one job that will run leader and workers
+  - name: worker
+    replicas: 1
+    template:
+      spec:
+        completionMode: Indexed
+        completions: 4
+        parallelism: 4
+        template:
+          spec:
+            # TODO add affinity back
+            containers:
+            - command:
+              - bash
+              - -xc
+              - |
+                # Fluxgen will create an install and configure script for flux
+                python3 -m pip install fluxgen
+                # This is an interactive cluster; all brokers run the same command
+                fluxgen create --brokers flux-worker-0-[0-3] --subdomain m.default.svc.cluster.local --
+                # Default script written will install, configure, and start an interactive cluster
+                ./flux-install.sh
+              image: python:latest
+              imagePullPolicy: IfNotPresent
+              name: flux
+              stdin: true
+              tty: true
+              volumeMounts:
+              - mountPath: /flux_framework/
+                name: curve-cert
+                readOnly: true
+            volumes:
+            - configMap:
+                defaultMode: 420
+                items:
+                - key: curve-cert
+                  path: curve.cert
+                name: curve-cert
+              name: curve-cert
