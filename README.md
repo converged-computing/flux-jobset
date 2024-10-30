@@ -69,4 +69,16 @@ broker.info[0]: quorum-full: quorum->run 0.591215s
 
 That is done with just a Python base container! More HPC apps coming soon!
 
+## License
+
+HPCIC DevTools is distributed under the terms of the MIT license.
+All new contributions must be made under this license.
+
+See [LICENSE](https://github.com/converged-computing/cloud-select/blob/main/LICENSE),
+[COPYRIGHT](https://github.com/converged-computing/cloud-select/blob/main/COPYRIGHT), and
+[NOTICE](https://github.com/converged-computing/cloud-select/blob/main/NOTICE) for details.
+
+SPDX-License-Identifier: (MIT)
+
+LLNL-CODE- 842614
 
