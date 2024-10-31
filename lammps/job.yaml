@@ -1,12 +1,12 @@
 apiVersion: jobset.x-k8s.io/v1alpha2
 kind: JobSet
 metadata:
-  name: flux
+  name: lammps
 spec:
   network:
     # This is the hostname
     # <jobSet.name>-<spec.replicatedJob.name>-<job-index>-<pod-index>.<subdomain>
-    # example: flux-worker-0-0.m
+    # example: lammps-worker-0-0.m
     enableDNSHostnames: true
     # Making this as short as possible
     subdomain: m
@@ -49,15 +49,14 @@ spec:
               - bash
               - -xc
               - |
-                # Fluxgen will create an install and configure script for flux
-                python3 -m pip install fluxgen
-                # This is an interactive cluster; all brokers run the same command
-                fluxgen create --brokers flux-worker-0-[0-3] --subdomain m.default.svc.cluster.local
-                # Default script written will install, configure, and start an interactive cluster
+                apt-get update && apt-get install -y python3-pip && python3 -m pip install fluxgen
+                if [[ ${JOB_COMPLETION_INDEX} -eq 0 ]]; then lead='--lead-broker'; fi
+                fluxgen create --brokers lammps-worker-0-[0-3] ${lead} --subdomain m.default.svc.cluster.local lmp -v x 2 -v y 2 -v z 2 -in in.reaxc.hns -nocite 
                 ./flux-install.sh
-              image: python:latest
+              image: ghcr.io/converged-computing/metric-lammps:latest
+              workingDir: /opt/lammps/examples/reaxff/HNS
               imagePullPolicy: IfNotPresent
-              name: flux
+              name: lammps
               stdin: true
               tty: true
               volumeMounts:
