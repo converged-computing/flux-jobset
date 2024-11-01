@@ -1,0 +1,72 @@
+apiVersion: jobset.x-k8s.io/v1alpha2
+kind: JobSet
+metadata:
+  name: osu
+spec:
+  network:
+    # This is the hostname
+    # <jobSet.name>-<spec.replicatedJob.name>-<job-index>-<pod-index>.<subdomain>
+    # example: osu-worker-0-0.m
+    enableDNSHostnames: true
+    # Making this as short as possible
+    subdomain: m
+  replicatedJobs:
+    # This example jobset has one job that will run leader and workers
+  - name: worker
+    replicas: 1
+    template:
+      spec:
+        completionMode: Indexed
+        completions: 4
+        parallelism: 4
+        template:
+          spec:
+            affinity:
+              podAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: app.kubernetes.io/name
+                        operator: In
+                        values:
+                        - worker
+                    topologyKey: topology.kubernetes.io/zone
+                  weight: 100
+              podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: app.kubernetes.io/name
+                        operator: In
+                        values:
+                        - worker
+                    topologyKey: kubernetes.io/hostname
+                  weight: 100
+            containers:
+            - command:
+              - bash
+              - -xc
+              - |
+                apt-get update && apt-get install -y python3-pip && python3 -m pip install fluxgen
+                if [[ ${JOB_COMPLETION_INDEX} -eq 0 ]]; then lead='--lead-broker'; fi
+                fluxgen create --brokers osu-worker-0-[0-3] ${lead} --subdomain m.default.svc.cluster.local -N 4 /opt/osu-benchmark/build.openmpi/mpi/collective/osu_allreduce 
+                ./flux-install.sh
+              image: ghcr.io/converged-computing/metric-osu-cpu:zen4
+              imagePullPolicy: IfNotPresent
+              name: osu
+              stdin: true
+              tty: true
+              volumeMounts:
+              - mountPath: /flux_framework/
+                name: curve-cert
+                readOnly: true
+            volumes:
+            - configMap:
+                defaultMode: 420
+                items:
+                - key: curve-cert
+                  path: curve.cert
+                name: curve-cert
+              name: curve-cert
